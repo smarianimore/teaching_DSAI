@@ -2,3 +2,6 @@ numpy
 matplotlib
 pandas
 seaborn
+scipy
+mplcursors
+plotly
