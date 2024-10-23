@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
+
     x = np.linspace(0, 2, 100)
 
     plt.figure()

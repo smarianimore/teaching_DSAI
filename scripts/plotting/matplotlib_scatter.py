@@ -4,7 +4,7 @@ from matplotlib.lines import Line2D
 
 if __name__ == '__main__':
 
-    df = pd.read_csv("../data/planets.csv")
+    df = pd.read_csv("../../data/planets.csv")
     df.columns = df.columns.str.strip()  # remove trailing whitespaces
     df['Type'] = ['Rocky', 'Rocky', 'Rocky', 'Rocky', 'Gas', 'Gas', 'Gas', 'Gas']
 

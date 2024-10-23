@@ -3,7 +3,7 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    df = pd.read_csv("../data/mtcars.csv")
+    df = pd.read_csv("../../data/mtcars.csv")
 
     df_4_cyl = df[df["cyl"] == 4]["mpg"]
     df_6_cyl = df[df["cyl"] == 6]["mpg"]
