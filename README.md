@@ -4,12 +4,14 @@ This repository stores code examples and datasets (although you *should not* put
 
 # Setup
 
+All the following commands (starting after `$>`) assume a **Unix terminal**. If you have Windows...get a Unix terminal ;)
+
 ## With git
 
-1. clone the repo ``
-2. create Python 3 virtual environment in repo root folder ``
-3. activate virtual env ``
-4. install dependencies ``
+1. clone the repo `$> git clone https://github.com/smarianimore/teaching_DSAI.git`
+2. create Python 3 virtual environment in repo root folder `$> python3 -m venv .venv` (or, replace `.venv` with any name you like)
+3. activate virtual env `$> source .venv/bin/activate` (where `.venv` should be the same name chosen in step §2)
+4. install dependencies `$> python3 -m pip install -r requirements.txt`
 5. now you should be good to go
 
 ## Without git
@@ -17,7 +19,7 @@ This repository stores code examples and datasets (although you *should not* put
 1. download repo as zip file
 2. unzip the zip file somewhere
 3. navigate to the unzipped folder in a terminal
-4. install dependencies ``
+4. install dependencies `$> python3 -m pip install -r requirements.txt`
 5. now you should be good to go
 
 ## LOLWUT!?
