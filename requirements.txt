@@ -7,3 +7,4 @@ mplcursors
 plotly
 scikit-learn
 pydotplus
+torch
