@@ -56,7 +56,7 @@ def pytorch_preprocess(X_train, X_test, y_train, y_test):
 
 
 def train(num_epochs, model, train_loader, optimizer, criterion, test_loader):
-    global inputs, best_loss, trigger_times
+    best_loss = np.inf
     for epoch in range(num_epochs):
         model.train()  # train with batch
         running_loss = 0.0
@@ -108,7 +108,7 @@ def test(model, X_test_tensor):
 
 if __name__ == "__main__":
 
-    df = pd.read_csv("../../data/bank_customer_churn.csv", index_col="customer_id")
+    df = pd.read_csv("data/bank_customer_churn.csv", index_col="customer_id")
 
     # Preprocess data
     X_train, X_test, y_train, y_test = preprocess(df)
@@ -122,7 +122,6 @@ if __name__ == "__main__":
     criterion = nn.BCELoss()  # Binary Cross Entropy loss (whatever, it is a measure of prediction error)
     optimizer = optim.Adam(model.parameters(), lr=0.001)  # gradient descent optimisation: Adam (check slides!)
 
-    best_loss = np.inf
     patience = 10  # early stopping: if after 10 epochs the loss doesn't change substantially, stop training
     trigger_times = 0
     num_epochs = 100  # how many times to feed the NN "batch_size" data points for training
