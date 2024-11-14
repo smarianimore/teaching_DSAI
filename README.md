@@ -30,6 +30,12 @@ All the following commands (starting after `$>`) assume a **Unix terminal**. If 
 
 Each code example can be run as a standalone Python script with no arguments: `$> python3 scripts/example.py` (where `example.py` should be the name of the script you want to run)
 
+For code examples using Keras, issue the following commands in your terminal before running the code:
+````
+$> sh set_keras.sh
+$> source set_keras.sh
+````
+
 # Contacts
 
 In case of issues of any kind [contact me](mailto:stefano.mariani@unimore.it)
