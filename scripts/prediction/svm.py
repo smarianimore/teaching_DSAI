@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    df = pd.read_csv("../../data/sonar.csv", header=None)
+    df = pd.read_csv("data/sonar.csv", header=None)
 
-    y = df.iloc[:,-1]
-    X = df.iloc[:,:-1]
+    y = df.iloc[:,-1]  # take all the rows and the last column
+    X = df.iloc[:,:-1]  # take all the rows and all the columns except the last one
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
@@ -23,16 +23,16 @@ if __name__ == "__main__":
     clf = GridSearchCV(svc, hyperparameters)
     clf.fit(X_train, y_train)
 
-    print("Best parameters set found on development set:")
+    print("Best parameters set found on train set:")
     print()
     print(clf.best_params_)
     print()
-    print("Grid scores on development set (mean (std.dev.)):")
+    print("Grid scores on train set (mean (std.dev.)):")
     print()
-    means = clf.cv_results_['mean_test_score']
+    means = clf.cv_results_['mean_test_score']  # do not be fooled: "mean_test_score" is the nam used by the library, but in this case the score has been computed on training!
     stds = clf.cv_results_['std_test_score']
     for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-        print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+        print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))  # string formatting "magic", see https://docs.python.org/3/library/stdtypes.html#old-string-formatting
 
     y_pred = clf.predict(X_test)
     print("---------------------------")
