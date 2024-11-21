@@ -6,18 +6,19 @@ from sklearn.metrics import homogeneity_completeness_v_measure
 
 if __name__ == "__main__":
 
+    data = datasets.load_iris()
+    print(f"{data['feature_names']=}")
     X, y = datasets.load_iris(return_X_y=True)
 
     kmeans = KMeans(n_clusters=3)
     kmeans.fit(X)
-    print(f"{kmeans.inertia_=}")
     print(f"{kmeans.cluster_centers_=}")
     print(f"{kmeans.labels_=}")
     print(f"{homogeneity_completeness_v_measure(y, kmeans.labels_)=}")
 
     predictions = kmeans.labels_
     colors = np.array(['red', 'blue', 'green'])
-    plt.scatter(X[:, 2], X[:, 3], color=colors[predictions])
+    plt.scatter(X[:, 2], X[:, 3], color=colors[predictions])  # we only plot the last two features (2D plot :/)
     plt.title("Predictions")
     plt.show()
 
