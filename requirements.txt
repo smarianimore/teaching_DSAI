@@ -9,3 +9,4 @@ scikit-learn
 pydotplus
 torch
 keras
+mlxtend

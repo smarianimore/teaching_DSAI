@@ -50,7 +50,7 @@ def pytorch_preprocess(X_train, X_test, y_train, y_test):
     train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
     test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
     train_loader = DataLoader(train_dataset, batch_size=32,
-                              shuffle=True)  # WE ACTUALLY FEED DATA TO THE NN 32 SAMPLES ("ROWS") AT ATIME
+                              shuffle=True)  # WE ACTUALLY FEED DATA TO THE NN 32 SAMPLES ("ROWS") AT A TIME
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     return X_test_tensor, train_loader, test_loader
 

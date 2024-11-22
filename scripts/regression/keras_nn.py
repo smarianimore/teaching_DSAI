@@ -11,11 +11,9 @@ if __name__ == "__main__":
     df = pd.read_csv("data/tesla-stock-price.csv", sep=",")
 
     data = df["close"].values.astype('float32')
-    timesteps = data.astype("datetime64[ns]")
 
     X = []
     y = []
-    t = []
 
     W = 10  # window size (number of days to look back)
 
@@ -25,7 +23,7 @@ if __name__ == "__main__":
 
     X = np.array(X)
     y = np.array(y)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=150, random_state=0, shuffle=False)  # DO NOT SHUFFLE DATA!
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0, shuffle=False)  # DO NOT SHUFFLE DATA!
 
     model = Sequential()
     model.add(Dense(50, input_shape=(X_train.shape[1],)))

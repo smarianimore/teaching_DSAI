@@ -12,13 +12,13 @@ if __name__ == "__main__":
     df = pd.read_csv("data/tesla-stock-price.csv", sep=",")
 
     data = df["close"].values.astype('float32')
-    timesteps = data.astype("datetime64[ns]")
+    #timesteps = data.astype("datetime64[ns]")
 
     X = []
     y = []
-    t = []
+    #t = []
 
-    W = 10  # window size (number of days to look back)
+    W = 20  # window size (number of days to look back)
 
     for i in range(W, data.shape[0]):  # the chosen window "slides" over the data 1 day at a time
         X.append(data[i-W:i])
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     X = np.array(X)
     y = np.array(y)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=150, random_state=0, shuffle=False)  # DO NOT SHUFFLE DATA!
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0, shuffle=False)  # DO NOT SHUFFLE DATA!
 
     print("*** Random Forest ***")
     clf = RandomForestRegressor()
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     print(mean_absolute_error(y_test, y_pred_lin))
 
     print("*** KNN Regression ***")
-    clf = KNeighborsRegressor(n_neighbors=3)
+    clf = KNeighborsRegressor(n_neighbors=20)
     clf.fit(X_train, y_train)
     y_pred_knn = clf.predict(X_test)
     print(mean_absolute_error(y_test, y_pred_knn))
@@ -49,6 +49,6 @@ if __name__ == "__main__":
     plt.plot(y_test, label="actual")
     plt.plot(y_pred_rf, label="random forest")
     plt.plot(y_pred_lin, label="linear")
-    plt.plot(y_pred_knn, label="knn (=3)")
+    plt.plot(y_pred_knn, label="knn (=20)")
     plt.legend()
     plt.show()
