@@ -15,7 +15,7 @@ if __name__ == "__main__":
     X = []
     y = []
 
-    W = 10  # window size (number of days to look back)
+    W = 40  # window size (number of days to look back)
 
     for i in range(W, data.shape[0]):  # the chosen window "slides" over the data 1 day at a time
         X.append(data[i-W:i])

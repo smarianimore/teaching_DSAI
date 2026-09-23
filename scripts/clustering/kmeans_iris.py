@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     predictions = kmeans.labels_
     colors = np.array(['red', 'blue', 'green'])
-    plt.scatter(X[:, 2], X[:, 3], color=colors[predictions])  # we only plot the last two features (2D plot :/)
+    plt.scatter(X[:, 0], X[:, 1], color=colors[predictions])  # we only plot the last two features (2D plot :/)
     plt.title("Predictions")
     plt.show()
 
@@ -26,6 +26,6 @@ if __name__ == "__main__":
     colors = np.array(['red', 'blue', 'green'])
     markers = ['o', 'x', 's']
     for i in range(len(X)):  # inefficient, but simple (we plot one datapoint at a time)
-        plt.scatter(X[i,2], X[i,3], marker=markers[y[i]], color=colors[predictions[i]])  # NOTICE: markers are based on ground truth, colors on prediction -> easy to see errors!
+        plt.scatter(X[i,0], X[i,1], marker=markers[y[i]], color=colors[predictions[i]])  # NOTICE: markers are based on ground truth, colors on prediction -> easy to see errors!
     plt.title("Predictions (colour) vs ground truth (marker)")
     plt.show()

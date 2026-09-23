@@ -10,6 +10,6 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     ax.plot(timesteps, prices, marker='o', markersize=2, linestyle='-')
     ax.tick_params(axis='x', rotation=45)
-    plt.tight_layout()
+    #plt.tight_layout()
 
     plt.show()

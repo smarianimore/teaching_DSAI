@@ -10,3 +10,7 @@ pydotplus
 torch
 keras
 mlxtend
+torchrl
+tensordict
+gymnasium
+pygame

@@ -29,8 +29,8 @@ if __name__ == "__main__":
     print("-----------------------")
     fig = plt.figure()
     tree.plot_tree(dt, filled=True, feature_names=datasets.load_wine().feature_names)
-    plt.show()
-    #fig.savefig("decision_tree.pdf")
+    #plt.show()
+    fig.savefig("wine_dt_plt.pdf")
 
     print("------------------------------")
     print("LEARNT TREE (GraphViz package)")

@@ -7,4 +7,5 @@ if __name__ == '__main__':
     df = pd.read_csv("../../data/eurodist.csv", index_col="city")
     M = np.asarray(df)
     plt.imshow(M)
+    plt.legend()
     plt.show()

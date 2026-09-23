@@ -10,8 +10,8 @@ if __name__ == '__main__':
     for i in range(N):
         dice = []
         for j in range(M):
-            dice.append(np.random.randint(1,6))
+            dice.append(np.random.randint(1,7))
         sampled_mean.append(sum(dice)/len(dice))
 
-    plt.hist(sampled_mean, np.arange(1.0, 6.0, 0.1), align='left')
+    plt.hist(sampled_mean, np.arange(1.0, 6.0, 0.1), align='mid')
     plt.show()
