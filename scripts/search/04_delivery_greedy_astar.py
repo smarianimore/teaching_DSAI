@@ -3,7 +3,7 @@ Run with 'greedy', 'astar', or no argument to compare both.
 """
 import sys
 
-# Undirected roads, in km: the Romania map in the supplied slides.
+# Undirected roads, in km: the Romania map in the slides.
 ROADS = [
     ("Arad", "Sibiu", 140), ("Arad", "Timisoara", 118),
     ("Arad", "Zerind", 75), ("Zerind", "Oradea", 71),

@@ -13,7 +13,7 @@ python 03_four_strategies.py
 python 04_delivery_greedy_astar.py
 ```
 
-On systems where the command is `python3`, use that instead. Each script is independent. There are no inputs to enter and no dependencies to install. Files ending in `_run.txt` contain the actual output of successful runs.
+On systems where the command is `python3`, use that instead. Each script is independent. There are no inputs to enter and no dependencies to install. 
 
 | Slides | Script | Scenario and what to watch |
 |---|---|---|
