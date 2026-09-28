@@ -39,12 +39,13 @@ def tree_search(start):
     nodes = [{"state": start, "parent": None, "action": "START", "depth": 0}]
     fringe = [0]  # Node IDs waiting to be selected.
     while fringe:
+        print("FRINGE:", [label(nodes[i]["state"]) for i in fringe])
         node_id = fringe.pop(0)
         node = nodes[node_id]
         state = node["state"]
-        print("SELECT n" + str(node_id), label(state),
+        print("  SELECT n" + str(node_id), label(state),
               "depth/cost=" + str(node["depth"]))
-        if state[1:] == (0, 0):  # Either robot location is acceptable.
+        if state[1:] == (0, 0):  # Either robot location is acceptable for termination (0 means clean).
             path = []
             while node_id is not None:
                 path.insert(0, nodes[node_id])
@@ -55,13 +56,13 @@ def tree_search(start):
             nodes.append({"state": next_state, "parent": node_id,
                           "action": action, "depth": node["depth"] + 1})
             fringe.append(child_id)
-            print("  n" + str(node_id), "--" + action + "-->",
+            print("    n" + str(node_id), "--" + action + "-->",
                   "n" + str(child_id), label(next_state), picture(next_state))
     return None
 
 
 def main():
-    print("Factory cleaning: start in A, both zones dirty. Each action costs 1.")
+    print("Factory cleaning: start in A, both zones dirty. Each action costs 1.\n")
     path = tree_search(("A", 1, 1))
     print("\nREPLAY OF THE SOLUTION")
     for node in path:
