@@ -21,6 +21,7 @@ def show(path):
 def bfs(start):
     fringe = [[start]]
     while fringe:
+        print("Fringe:", [p[-1] for p in fringe])
         path = fringe.pop(0)  # FIFO: oldest path first.
         show(path)
         if path[-1] in GOALS:
@@ -33,6 +34,7 @@ def bfs(start):
 def dfs(start):
     fringe = [[start]]
     while fringe:
+        print("Fringe:", [p[-1] for p in fringe])
         path = fringe.pop()  # LIFO: newest path first.
         show(path)
         if path[-1] in GOALS:
