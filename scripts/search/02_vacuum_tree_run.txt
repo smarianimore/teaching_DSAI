@@ -1,0 +1,25 @@
+Factory cleaning: start in A, both zones dirty. Each action costs 1.
+SELECT n0 s4 depth/cost=0
+  n0 --Aspire--> n1 s2 [A: clean] [B: dirty] robot=A
+  n0 --Go right--> n2 s8 [A: dirty] [B: dirty] robot=B
+SELECT n1 s2 depth/cost=1
+  n1 --Go right--> n3 s6 [A: clean] [B: dirty] robot=B
+SELECT n2 s8 depth/cost=1
+  n2 --Aspire--> n4 s7 [A: dirty] [B: clean] robot=B
+  n2 --Go left--> n5 s4 [A: dirty] [B: dirty] robot=A
+SELECT n3 s6 depth/cost=2
+  n3 --Aspire--> n6 s5 [A: clean] [B: clean] robot=B
+  n3 --Go left--> n7 s2 [A: clean] [B: dirty] robot=A
+SELECT n4 s7 depth/cost=2
+  n4 --Go left--> n8 s3 [A: dirty] [B: clean] robot=A
+SELECT n5 s4 depth/cost=2
+  n5 --Aspire--> n9 s2 [A: clean] [B: dirty] robot=A
+  n5 --Go right--> n10 s8 [A: dirty] [B: dirty] robot=B
+SELECT n6 s5 depth/cost=3
+
+REPLAY OF THE SOLUTION
+0: START | [A: dirty] [B: dirty] robot=A
+1: Aspire | [A: clean] [B: dirty] robot=A
+2: Go right | [A: clean] [B: dirty] robot=B
+3: Aspire | [A: clean] [B: clean] robot=B
+Total cost: 3
