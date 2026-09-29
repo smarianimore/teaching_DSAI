@@ -49,7 +49,8 @@ def tutorial_numpy():
     m = np.array([[1, 2, 3],
                   [4, 5, 6]])                     # 2x3 matrix
     print("a:", a, "| dtype:", a.dtype)
-    print("m.shape:", m.shape, "| m.ndim:", m.ndim, "| m.size:", m.size)
+    print("m:", m)
+    print("\t| m.shape:", m.shape, "| m.ndim:", m.ndim, "| m.size:", m.size)
 
     # Handy constructors
     print("arange  :", np.arange(0, 10, 2))       # like range(), but an array
@@ -70,7 +71,7 @@ def tutorial_numpy():
 
     # Boolean indexing (masks): very powerful for filtering
     mask = a > 2
-    print("mask:", mask, "-> a[mask] =", a[mask])
+    print("mask (a > 2):", mask, "-> a[mask] =", a[mask])
 
     # --- Vectorized operations (no for loops!) -----------------------------
     print("a * 2   =", a * 2)
@@ -80,15 +81,15 @@ def tutorial_numpy():
     # --- Reductions along an axis ------------------------------------------
     # axis=0 -> "collapse the rows"    (one result per column)
     # axis=1 -> "collapse the columns" (one result per row)
-    print("total sum   :", m.sum())
-    print("column sums :", m.sum(axis=0))
-    print("row means   :", m.mean(axis=1))
+    print("m total sum   :", m.sum())
+    print("m column sums :", m.sum(axis=0))
+    print("m row means   :", m.mean(axis=1))
 
     # --- Broadcasting: different shapes are automatically "stretched" -------
     row = np.array([10, 20, 30])                  # shape (3,)
-    print("m + row:\n", m + row)                  # row is added to every row of m
+    print("m + row (10,20,30):\n", m + row)                  # row is added to every row of m
     column = np.array([[1], [2], [3]])            # shape (3,1)
-    print("column + row (3x3 table):\n", column + row)
+    print("column ([1],[2],[3]) + row (3x3 table):\n", column + row)
 
     # --- reshape / concatenation ----------------------------------------------
     b = np.arange(12).reshape(3, 4)               # from 1D to 3x4
@@ -129,6 +130,7 @@ def tutorial_pandas():
 
     # --- New columns (vectorized operations, just like in numpy) ------------------
     df["revenue"] = df["sales"] * df["price"]
+    print(f"Revenue as sales * price: {df['revenue']}")
 
     # --- Selection -------------------------------------------------------------------
     print("Single column (Series):\n", df["city"].head(3), "\n")
@@ -148,7 +150,7 @@ def tutorial_pandas():
     by_city = df.groupby("city")["revenue"].agg(["sum", "mean", "count"])
     print("Aggregation by city:\n", by_city.round(1), "\n")
 
-    # Pivot table (city x product)
+    # Pivot table (city x product), similar to an Excel sheet
     pivot = df.pivot_table(index="city", columns="product",
                            values="revenue", aggfunc="sum", fill_value=0)
     print("Pivot table:\n", pivot.round(1), "\n")
@@ -173,6 +175,7 @@ def tutorial_pandas():
     # --- Time series ------------------------------------------------------------------------------
     dates = pd.date_range("2024-01-01", periods=60, freq="D")
     series = pd.Series(rng.normal(size=60).cumsum(), index=dates, name="value")
+    print("Time series head:\n", series.head(3), "\n")
     print("Weekly mean (resample):\n", series.resample("W").mean().head(3), "\n")
     rolling_mean = series.rolling(window=7).mean()  # 7-day moving average
     print("Moving average (last 3):\n", rolling_mean.tail(3))
@@ -214,7 +217,7 @@ def tutorial_matplotlib():
     px = rng.normal(size=150)
     py = px * 0.8 + rng.normal(scale=0.5, size=150)
     sc = axs[0, 1].scatter(px, py, c=py, cmap="viridis", s=25)
-    fig.colorbar(sc, ax=axs[0, 1], label="value of y")
+    fig.colorbar(sc, ax=axs[0, 1], label="value of y")  # to add the colorbar legenda
     axs[0, 1].set_title("Scatter")
 
     # --- (3) Histogram --------------------------------------------------------------------
@@ -251,11 +254,11 @@ def tutorial_scipy():
     # --- scipy.stats: distributions and statistical tests ---------------------------
     print("-- stats --")
     print("P(Z <= 1.96)       =", stats.norm.cdf(1.96).round(4))   # cumulative distribution
-    print("97.5% quantile     =", stats.norm.ppf(0.975).round(4))  # inverse of the cdf
+    print("97.5% quantile     =", stats.norm.ppf(0.975).round(4))  # inverse of the cdf: "At or below what value does a given percentage of the distribution lie?"
 
     g1 = stats.norm.rvs(loc=0.0, scale=1.0, size=100, random_state=1)
     g2 = stats.norm.rvs(loc=0.6, scale=1.0, size=100, random_state=2)
-    t = stats.ttest_ind(g1, g2)                   # two-sample independent t-test
+    t = stats.ttest_ind(g1, g2)                   # two-sample independent t-test: "Are the two samples drawn from distributions with the same mean?"
     print(f"t-test: statistic={t.statistic:.3f}, p-value={t.pvalue:.4f}")
 
     r, p = stats.pearsonr(g1, g1 + 0.5 * g2)      # Pearson correlation
@@ -319,7 +322,7 @@ def tutorial_pytorch():
 
     # --- Tensors: like numpy arrays, but with GPU support and autograd -------------------
     t = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    print("shape:", t.shape, "| dtype:", t.dtype, "| device:", t.device)
+    print("tensor:", t, "\n\t| shape:", t.shape, "| dtype:", t.dtype, "| device:", t.device)
     print("t @ t:\n", t @ t)
     print("zeros:", torch.zeros(2, 3).shape, "| rand:", torch.rand(2).shape)
 

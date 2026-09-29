@@ -1,4 +1,4 @@
-"""Slides 9 and 12: breadth-first tree search for a factory cleaning robot."""
+"""Slides 9 and 18: breadth-first tree search for a factory cleaning robot."""
 
 # State = (robot location, dirt in A, dirt in B); 1 = dirty, 0 = clean.
 STATES = [

@@ -1,4 +1,4 @@
-"""Slides 32, 35, 36: deliver a parcel from Arad to Bucharest.
+"""Slides 38, 40, 41: deliver a parcel from Arad to Bucharest.
 Run with 'greedy', 'astar', or no argument to compare both.
 """
 import sys

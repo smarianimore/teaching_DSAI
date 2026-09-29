@@ -1,3 +1,15 @@
 .idea/
 scripts/prediction/wine_dt.pdf
 wine_dt.pdf
+chatGPT-kaggle.py
+chatGPT-wordcount.py
+data/datasets.zip
+kaggle_notebooks/
+notebooks_found.csv
+projects/
+rebuild_v7.py
+scripts/hello.txt
+scripts/prediction/wine_dt_plt.pdf
+scripts/regression/Figure_1.png
+scripts/regression/Figure_2.png
+scripts/tutorial_figures/
