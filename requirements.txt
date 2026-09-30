@@ -14,3 +14,7 @@ torchrl
 tensordict
 gymnasium
 pygame
+openpyxl
+sqlalchemy
+httpx
+asyncua

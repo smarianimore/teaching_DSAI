@@ -63,7 +63,7 @@ def tree_search(start):
 
 def main():
     print("Factory cleaning: start in A, both zones dirty. Each action costs 1.\n")
-    path = tree_search(("A", 1, 1))
+    path = tree_search(("B", 1, 1))
     print("\nREPLAY OF THE SOLUTION")
     for node in path:
         print(str(node["depth"]) + ":", node["action"], "|", picture(node["state"]))
