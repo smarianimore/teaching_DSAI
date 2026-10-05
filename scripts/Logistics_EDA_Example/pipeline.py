@@ -152,6 +152,7 @@ eligible = d[d.on_time.notna()].copy()
 eligible["on_time"] = eligible.on_time.astype(bool)
 eligible["late"] = eligible.late.astype(bool)
 completed = d[d.lead_h.notna()].copy()
+print("\n" + "-" * 80)
 print(f"Final data for EDA: {len(completed):,} rows, {completed.columns.size:,} columns")
 completed.info(verbose=True)
 print(completed.describe())
@@ -165,12 +166,13 @@ audit.update(unique_orders=len(d), matured_orders=int(d.matured.sum()),
              valid_completed_lead_times=len(completed))
 pd.Series(audit, name="count").to_csv(OUT / "quality_audit.csv")
 d.to_csv(OUT / "orders_clean.csv", index=False)
+print("\n" + "-" * 80)
 print("Updated Audit:")
 for k in audit:
     print(f"{k}: {audit[k]}")
 print("-" * 80)
 
-# %% 5. Summary statistics and correct denominators
+# %% 5. Summary statistics
 # group completed orders by carrier and lane, and compute some statistics for lead time (size=number of orders)
 summary = completed.groupby(["carrier", "lane"]).lead_h.agg(
     n="size", mean_h="mean", median_h="median", p90_h=lambda x: x.quantile(.90), sd_h="std")
@@ -190,69 +192,60 @@ unknown_n = audit["unknown_matured_outcomes"]
 success_n = int(eligible.on_time.sum())
 bounds = (success_n / matured_n, (success_n + unknown_n) / matured_n)
 
-# %% 6. Daily trends and uncertainty: resample days, not individual orders
+# %% 6. Temporal trends (e.g. daily on-time rate)
+# group eligible orders by release day, and compute daily counts of orders (new column "n") and on-time deliveries (new column "success")
 daily = eligible.groupby("day").agg(n=("order_id", "size"), success=("on_time", "sum"))
-daily = daily.reindex(pd.date_range(d.day.min(), d.day.max(), freq="D"))
+daily = daily.reindex(pd.date_range(d.day.min(), d.day.max(), freq="D"))  # reindex to ensure all days are present, even if no orders were released on that day
 daily["rate"] = daily.success / daily.n
-daily["rolling_7d_rate"] = daily.success.rolling(7, min_periods=7).sum() / daily.n.rolling(7, min_periods=7).sum()
+
+daily["rolling_7d_rate"] = daily.success.rolling(7, min_periods=7).sum() / daily.n.rolling(7, min_periods=7).sum()  # compute a 7-day rolling average of the on-time rate (ensure at least 7 days of data)
 daily.index.name = "day"
 daily.to_csv(OUT / "daily_service.csv")
-valid_days = daily.dropna(subset=["n", "success"])
-rng = np.random.default_rng(SEED + 1)
-indices = rng.integers(0, len(valid_days), size=(2000, len(valid_days)))
-boot_rates = valid_days.success.to_numpy()[indices].sum(axis=1) / valid_days.n.to_numpy()[indices].sum(axis=1)
-ci = np.quantile(boot_rates, [.025, .975])
-# Days are the resampling units. Serial dependence across days would require
-# moving blocks or a different dependence model. This is an illustrative CI
-# for a broader process, not uncertainty about the observed finite census.
 
-# %% 7. Distributions and outliers: flag for investigation, retain valid tails
+# %% 7. Distributions and outliers
+# Compute the interquartile range (IQR), separately for each lane:
 q1 = completed.groupby("lane").lead_h.transform(lambda x: x.quantile(.25))
 q3 = completed.groupby("lane").lead_h.transform(lambda x: x.quantile(.75))
+# Identify outliers in lead time: flag orders with lead times that are unusually short or long compared to the typical range for their lane.
 completed["iqr_flag"] = (completed.lead_h < q1 - 1.5 * (q3-q1)) | (completed.lead_h > q3 + 1.5 * (q3-q1))
 completed.loc[completed.iqr_flag].to_csv(OUT / "lead_time_flags.csv", index=False)
 
-# %% 8. Relationships and confounding: raw versus lane-standardized rates
+# %% 8. Relationships and correlations
+# Compute the on-time rate for each carrier and lane
 raw_carrier = eligible.groupby("carrier").on_time.mean()
-stratified = eligible.groupby(["carrier", "lane"]).on_time.mean().unstack()
+stratified = eligible.groupby(["carrier", "lane"]).on_time.mean().unstack()  # unstack() makes the series with a multi-index (carrier first, lane then) into a DataFrame with carriers as rows and lanes as columns
+# Simpson’s paradox: compare pooled and within-group results!
+# Example: a carrier may have more orders for an easier lane, so we need to standardize the rates according to lane proportions.
+# We do this by weighting each lane's on-time rate by the overall proportion of orders in that lane.
 weights = eligible.lane.value_counts(normalize=True).reindex(stratified.columns)
-assert stratified.notna().all().all(), "Standardization requires overlap"
 standardized = stratified.mul(weights, axis=1).sum(axis=1)
+# What lead time was experienced by a randomly selected unit?
 comparison = pd.DataFrame({"raw_on_time_rate": raw_carrier,
                            "common_lane_mix_on_time_rate": standardized})
 comparison.to_csv(OUT / "carrier_comparison.csv")
+
+# Check correlation between distance and lead time
 pair = completed[["distance_km", "lead_h"]].dropna()
 pearson = stats.pearsonr(pair.distance_km, pair.lead_h).statistic
 spearman = stats.spearmanr(pair.distance_km, pair.lead_h).statistic
-within_lane = completed.groupby("lane")[["distance_km", "lead_h"]].corr(method="spearman")
+# Check it also within each lane, check subgroups consistency
+within_lane = completed.groupby("lane")[["distance_km", "lead_h"]].corr(method="spearman")  # no unstack(), so this is a multi-index DataFrame
 within_lane.to_csv(OUT / "within_lane_correlations.csv")
-# P-values from a row-wise correlation test would ignore shared daily shocks.
-
-# %% 9. Optional adjusted regression with day-clustered standard errors
-optional = {}
-try:
-    import statsmodels.formula.api as smf
-    model_data = completed.dropna(subset=["distance_km"]).copy()
-    model = smf.ols("lead_h ~ C(carrier) + C(lane) + distance_km + units + daily_orders + C(weekday) + day_index",
-                    data=model_data).fit(cov_type="cluster", cov_kwds={"groups": model_data.day})
-    (OUT / "adjusted_model.txt").write_text(model.summary().as_text(), encoding="utf-8")
-    optional["statsmodels"] = "adjusted_model.txt written"
-except ImportError:
-    optional["statsmodels"] = "not installed; adjusted regression skipped"
-# Adjustment is descriptive. It does not establish causation; unmeasured
-# confounding and completed-order selection remain possible.
 
 # %% 10. Purposeful static plots: comparisons, distributions, trends, relationships
 fig, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
+# Histograms depend on binning; KDE depends on bandwidth. ECDFs avoid both choices and are particularly useful for lead times and service thresholds
 sns.ecdfplot(data=completed, x="lead_h", hue="lane", ax=axes[0, 0])
 axes[0, 0].set(title="Completed orders: lead-time distribution", xlabel="Lead time (hours)", ylabel="Cumulative share")
-sns.boxplot(data=completed, x="lane", y="lead_h", hue="carrier", ax=axes[0, 1], showfliers=False)
+
+sns.boxplot(data=completed, x="lane", y="lead_h", hue="carrier", ax=axes[0, 1], showfliers=False)  # showfliers=False hides points visually only; data and summaries retain them.
 axes[0, 1].set(title="Carrier comparisons within each lane", xlabel="Lane", ylabel="Lead time (hours)")
-# showfliers=False hides points visually only; data and summaries retain them.
+
 axes[1, 0].plot(daily.index, daily.rate * 100, alpha=.35, label="Daily")
 axes[1, 0].plot(daily.index, daily.rolling_7d_rate * 100, label="7-day pooled rate")
 axes[1, 0].set(title="Service by release cohort (known, matured)", xlabel="Release date (UTC)", ylabel="On-time deliveries (%)", ylim=(0, 100))
 axes[1, 0].legend()
+
 date_locator = mdates.AutoDateLocator(minticks=4, maxticks=6)
 axes[1, 0].xaxis.set_major_locator(date_locator)
 axes[1, 0].xaxis.set_major_formatter(mdates.ConciseDateFormatter(date_locator))
@@ -261,6 +254,7 @@ axes[1, 1].set(title="Carrier ranking depends on work mix", xlabel="Carrier", yl
 sns.despine(fig=fig)
 fig.savefig(OUT / "overview.png", dpi=170)
 plt.close(fig)
+
 fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
 sns.scatterplot(data=completed.sample(min(1500, len(completed)), random_state=SEED), x="distance_km", y="lead_h", hue="lane", alpha=.35, s=15, ax=ax)
 ax.set(title="Distance and lead time: route mix is a confounder", xlabel="Distance (km)", ylabel="Lead time (hours)")
@@ -270,13 +264,13 @@ plt.close(fig)
 # %% 11. Reporting, reproducibility, and optional offline interactive output
 metrics = {"simulated": True, "snapshot_utc": str(SNAPSHOT), "seed": SEED,
            "unique_orders": len(d), "known_matured_orders": len(eligible),
-           "on_time_rate": float(overall_rate), "day_bootstrap_95_interval": ci.tolist(),
+           "on_time_rate": float(overall_rate),
            "missing_outcome_bounds": list(bounds), "pearson_distance_lead": float(pearson),
-           "spearman_distance_lead": float(spearman), "optional_modules": optional}
+           "spearman_distance_lead": float(spearman)}
 html = """<!doctype html><html><head><meta charset='utf-8'><title>Simulated logistics EDA</title>
 <style>body{font:17px system-ui;max-width:1150px;margin:40px auto;color:#172b42}table{border-collapse:collapse}td,th{padding:8px;border:1px solid #ccd6df}img{max-width:100%}</style></head><body>
 <h1>Simulated logistics EDA</h1><p>One row per order. Snapshot: 2 April 2026, 00:00 UTC. All data are simulated.</p>"""
-html += f"<p>Known matured orders: {len(eligible):,}. On-time rate: {overall_rate:.1%}. Illustrative day-bootstrap 95% interval: {ci[0]:.1%}–{ci[1]:.1%}.</p>"
+html += f"<p>Known matured orders: {len(eligible):,}. On-time rate: {overall_rate:.1%}.</p>"
 html += f"<p>Missing-outcome sensitivity bounds: {bounds[0]:.1%}–{bounds[1]:.1%}. Not-yet-due orders are excluded from service-rate denominators.</p>"
 html += "<h2>Data quality</h2>" + pd.Series(audit, name="Count").to_frame().to_html()
 html += "<h2>Raw versus common lane mix</h2>" + comparison.to_html(float_format=lambda x: f"{x:.1%}")
@@ -291,14 +285,13 @@ try:
                              labels={"distance_km":"Distance (km)", "lead_h":"Lead time (hours)"},
                              title="Explore simulated order-level relationships")
     html += interactive.to_html(full_html=False, include_plotlyjs=True)
-    optional["plotly"] = "interactive chart embedded; no CDN needed"
 except ImportError:
-    optional["plotly"] = "not installed; static report written"
+    print("Plotly not installed; static report written")
 html += "<h2>Decision and next experiment</h2><p>Review late orders by lane and release cohort; audit unknown outcomes; compare carriers on comparable assignments. Test operational changes prospectively with randomized or defensible quasi-experimental allocation. These synthetic results are teaching examples.</p></body></html>"
 (OUT / "report.html").write_text(html, encoding="utf-8")
 (OUT / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 versions = {"python": platform.python_version()}
-for package in ["numpy", "pandas", "scipy", "matplotlib", "seaborn", "statsmodels", "plotly", "streamlit"]:
+for package in ["numpy", "pandas", "scipy", "matplotlib", "seaborn", "plotly", "streamlit"]:
     try:
         versions[package] = importlib.metadata.version(package)
     except importlib.metadata.PackageNotFoundError:

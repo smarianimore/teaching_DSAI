@@ -5,7 +5,7 @@
 NEXT = {
     "Raw": ["Manual cut", "Auto cell"],
     "Manual cut": ["Polish"],
-    "Polish": ["Paint"],
+    "Polish": ["Manual cut", "Paint"],
     "Paint": ["Dispatch manual"],
     "Auto cell": ["Dispatch auto"],
     "Dispatch manual": [],
@@ -88,8 +88,8 @@ def main():
             print(" ", state, "->", ", ".join(children))
     print("\nBFS: select the shallowest waiting path")
     report(bfs("Raw"))
-    print("\nDFS: follow the first branch deeply")
-    report(dfs("Raw"))
+    #print("\nDFS: follow the first branch deeply")
+    #report(dfs("Raw"))
     print("\nDLS: DFS with limit 1")
     report(dls(["Raw"], 1))
     print("\nDLS: DFS with limit 2")
