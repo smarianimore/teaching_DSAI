@@ -5,7 +5,11 @@ The Python code is the implementation of that design.
 
 **Use this reasoning chain throughout:**
 
-> Management question → decision-relevant KPI → plot that makes the comparison visible → derived metrics and features → original observations and business rules → computation and checks → defensible action.
+> Management question 
+> → decision-relevant KPI 
+> → plot that makes the comparison visible 
+> → derived metrics and features 
+> → original observations and business rules 
 
 Design backward from the question to the required data. 
 Implement forward from validated source data to the result. 
