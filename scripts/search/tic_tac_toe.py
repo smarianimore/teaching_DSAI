@@ -1,14 +1,29 @@
 """Minimal tic-tac-toe with pygame and interchangeable players.
 
-Install: python -m pip install pygame
-Run:     python tic_tac_toe.py --x human --o minimax
-         python tic_tac_toe.py --x random --o minimax
+Players: human, random, minimax. Python 3.9+ required.
+The game logic works without pygame.
 
-Players: human, random, minimax. X starts. Click to play; R restarts;
-Escape quits. Python 3.9+ required. Game logic works without pygame.
+Interactive mode (needs pygame: python -m pip install pygame)
+    python tic_tac_toe.py --x human --o minimax
+    python tic_tac_toe.py --x random --o minimax --delay 500
+  X starts. Click to play; R restarts; Escape quits.
+  --delay sets the pause (ms) before each AI move.
+
+Play mode (headless AI vs AI; needs pandas and matplotlib)
+    python tic_tac_toe.py --games 500 --x random --o minimax --start random
+  Runs N games with no window and writes one CSV row per game
+  (game, x_strategy, o_strategy, first_mark, first_strategy,
+  winner_mark, winner_strategy, moves), then plots and saves:
+    1. wins per AI strategy (and draws);
+    2. outcomes (first player won / second player won / draw) per starter;
+    3. average number of moves per winning strategy.
+  --start random|alternate|x|o  who moves first (default: random)
+  --csv FILE / --plot FILE      output paths (default: tic_tac_toe_results.csv/.png)
+  Human players are not allowed in play mode.
 """
 
 import argparse
+import csv
 import random
 from dataclasses import dataclass
 from functools import lru_cache
@@ -48,9 +63,10 @@ class Board:
 class Game:
     """Owns the current board, enforces legal moves, and alternates turns."""
 
-    def __init__(self):
+    def __init__(self, first="X"):
         self.board = Board()
-        self.turn = "X"
+        self.turn = first
+        self.moves = 0
 
     def move(self, index):
         """Return False for an illegal move without changing the game."""
@@ -58,6 +74,7 @@ class Game:
             self.board = self.board.with_move(index, self.turn)
         except ValueError:
             return False
+        self.moves += 1
         if not self.board.is_terminal():
             self.turn = "O" if self.turn == "X" else "X"
         return True
@@ -161,15 +178,102 @@ class PygameView:
         pg.display.flip()
 
 
+CSV_FIELDS = ["game", "x_strategy", "o_strategy", "first_mark", "first_strategy",
+              "winner_mark", "winner_strategy", "moves"]
+
+
+def play_game(players, names, first):
+    """Play one headless game; return a CSV row (without the game id)."""
+    game = Game(first)
+    while not game.board.is_terminal():
+        game.move(players[game.turn].choose_move(game.board, game.turn))
+    mark = game.board.winner()
+    return {
+        "x_strategy": names["X"], "o_strategy": names["O"],
+        "first_mark": first, "first_strategy": names[first],
+        "winner_mark": mark or "draw",
+        "winner_strategy": names[mark] if mark else "draw",
+        "moves": game.moves,
+    }
+
+
+def run_games(n, x_name, o_name, types, start, csv_path):
+    names = {"X": x_name, "O": o_name}
+    players = {mark: types[name]() for mark, name in names.items()}
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, CSV_FIELDS)
+        writer.writeheader()
+        for g in range(n):
+            first = {"x": "X", "o": "O", "alternate": "XO"[g % 2]}.get(start) or random.choice("XO")
+            writer.writerow({"game": g + 1, **play_game(players, names, first)})
+
+
+def plot_results(csv_path, png_path):
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    df = pd.read_csv(csv_path)
+    # one row per (game, seat) so strategies are comparable even if both seats share one
+    seats = pd.concat([
+        df.assign(strategy=df["x_strategy"], seat="X"),
+        df.assign(strategy=df["o_strategy"], seat="O"),
+    ])
+    seats["won"] = seats["winner_mark"] == seats["seat"]
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    label = lambda m: f"{m} ({df[m.lower() + '_strategy'].iloc[0]})"
+
+    wins = seats.groupby(["seat", "strategy"])["won"].sum()
+    wins.index = [f"{st} as {se}" for se, st in wins.index]
+    wins["draw"] = (df["winner_mark"] == "draw").sum()
+    wins.plot.bar(ax=axes[0], color="tab:blue", rot=20)
+    axes[0].set_title("Wins per AI player strategy")
+    axes[0].set_ylabel("wins")
+
+    df["outcome"] = df.apply(
+        lambda r: "draw" if r["winner_mark"] == "draw"
+        else "first player won" if r["winner_mark"] == r["first_mark"] else "second player won", axis=1)
+    first = df.groupby(["first_mark", "outcome"]).size().unstack(fill_value=0)
+    first = first.reindex(columns=["first player won", "second player won", "draw"], fill_value=0)
+    first.index = [f"{label(m)} starts" for m in first.index]
+    first.plot.bar(ax=axes[1], rot=20)
+    axes[1].set_title("Outcomes per who starts first")
+    axes[1].set_ylabel("games")
+
+    avg = df.groupby("winner_strategy")["moves"].mean()
+    avg.plot.bar(ax=axes[2], color="tab:green", rot=20)
+    axes[2].set_title("Average moves per winning strategy")
+    axes[2].set_ylabel("moves until end state")
+    fig.suptitle(f"{len(df)} games: X={df['x_strategy'][0]} vs O={df['o_strategy'][0]}")
+    fig.tight_layout()
+    fig.savefig(png_path)
+    print(f"Saved {png_path}")
+    plt.show()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     types = {"human": HumanPlayer, "random": RandomPlayer, "minimax": MinimaxPlayer}
     parser.add_argument("--x", choices=types, default="human")
     parser.add_argument("--o", choices=types, default="minimax")
     parser.add_argument("--delay", type=int, default=1000, help="AI turn delay in milliseconds")
+    parser.add_argument("--games", type=int, default=0,
+                        help="play mode: run N headless games (no human) and plot metrics")
+    parser.add_argument("--start", choices=["random", "alternate", "x", "o"], default="random",
+                        help="play mode: who moves first")
+    parser.add_argument("--csv", default="tic_tac_toe_results.csv")
+    parser.add_argument("--plot", default="tic_tac_toe_results.png")
     args = parser.parse_args()
     if args.delay < 0:
         parser.error("--delay must be nonnegative")
+    if args.games < 0:
+        parser.error("--games must be nonnegative")
+    if args.games:
+        if "human" in (args.x, args.o):
+            parser.error("play mode needs AI players (random, minimax)")
+        run_games(args.games, args.x, args.o, types, args.start, args.csv)
+        print(f"Saved {args.csv}")
+        plot_results(args.csv, args.plot)
+        return
 
     try:
         view = PygameView()

@@ -1,6 +1,6 @@
 # Search algorithms in production and logistics
 
-Beginner Python examples accompanying **AI2a - Search.pptx**. Slide numbers refer to the numbered slides in the supplied deck. These are small, deterministic teaching models; no packages or GUI are required.
+Beginner Python examples accompanying **AI2a - Search.pptx**. Slide numbers refer to the numbered slides in the supplied deck. These are small, deterministic teaching models; no packages or GUI are required (except for example 5, which uses pygame, pandas and matplotlib).
 
 ## Run the examples
 
@@ -137,6 +137,31 @@ Repeated cities and both Bucharest nodes are deliberately retained to match the 
 Straight-line distance is a lower bound on road distance, so the heuristic is admissible. With positive road costs, finite branching and this admissible heuristic (zero at the goal), A* tree search finds an optimal route. These assumptions matter; an arbitrary heuristic does not give the same guarantee.
 
 **Try:** set all values in `H` to zero. A* becomes uniform-cost search, selecting the path with smallest distance so far. Or change a heuristic to an overestimate and watch the selection order change; optimality is then no longer guaranteed.
+
+## 5. Tic-tac-toe: play mode and game statistics
+
+`tic_tac_toe.py` is a pygame tic-tac-toe with interchangeable players (`human`, `random`, `minimax`). Interactively, `python tic_tac_toe.py --x human --o minimax` opens a window (needs `pygame`).
+
+**Play mode** runs N games between two AI players without a window, logs them to a CSV and plots the results (needs `pandas` and `matplotlib`):
+
+```
+python tic_tac_toe.py --games 500 --x random --o minimax --start random
+```
+
+| Option | Meaning |
+|---|---|
+| `--games N` | number of games; enables play mode |
+| `--x`, `--o` | strategies of X and O (`random` or `minimax`) |
+| `--start` | who moves first: `random` (default), `alternate`, `x`, `o` |
+| `--csv`, `--plot` | output files (default `tic_tac_toe_results.csv` / `.png`) |
+
+The CSV has one row per game: `game, x_strategy, o_strategy, first_mark, first_strategy, winner_mark, winner_strategy, moves` (`draw` when nobody wins; `moves` counts moves until the end state). The saved figure has three panels:
+
+1. **Wins per AI strategy**, split by the mark played, plus draws.
+2. **Outcomes per who starts first**: first player won, second player won, draw.
+3. **Average number of moves** per winning strategy (draws form their own bar).
+
+**Try:** compare `--x random --o random` (the first player has an edge) with `--x minimax --o minimax` (always a draw after 9 moves), or `--x random --o minimax --start x` versus `--start o`.
 
 ## Deliberate simplifications
 
