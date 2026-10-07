@@ -137,9 +137,11 @@ d["lead_h"] = (d.delivered_at - d.released_at).dt.total_seconds() / 3600  # lead
 d["day"] = d.released_at.dt.floor("D")
 d["weekday"] = d.released_at.dt.day_name()
 d["day_index"] = (d.day - d.day.min()).dt.days
-d["daily_orders"] = d.groupby("day").order_id.transform("size")  # groupby("day") groups rows by release day, and transform("size") counts rows in each group while returning a result aligned with the original rows. So every order released on the same day gets the same count.
+d["daily_orders"] = d.groupby("day").order_id.transform("size")  # groupby("day") groups rows by release day, and transform("size") counts rows in each group while returning a result aligned with the original rows.
+# So every order released on the same day gets the same count.
 
-# Distinguish between orders that are past due date (matured) and those that are not yet due. Only matured orders can be evaluated for on-time performance.
+# Distinguish between orders that are past due date (matured) and those that are not yet due.
+# Only matured orders can be evaluated for on-time performance.
 d["matured"] = d.due_at.le(SNAPSHOT)  # "matured" orders are past due date
 known_delivery = d.status.eq("delivered") & d.delivered_at.notna()
 known_open_late = d.status.eq("in_transit") & d.matured

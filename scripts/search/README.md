@@ -1,4 +1,4 @@
-# Search algorithms in production and logistics
+# Search algorithms
 
 Beginner Python examples accompanying **AI2a - Search.pptx**. Slide numbers refer to the numbered slides in the supplied deck. These are small, deterministic teaching models; no packages or GUI are required (except for example 5, which uses pygame, pandas and matplotlib).
 
@@ -142,7 +142,7 @@ Straight-line distance is a lower bound on road distance, so the heuristic is ad
 
 `tic_tac_toe.py` is a pygame tic-tac-toe with interchangeable players (`human`, `random`, `minimax`). Interactively, `python tic_tac_toe.py --x human --o minimax` opens a window (needs `pygame`).
 
-**Play mode** runs N games between two AI players without a window, logs them to a CSV and plots the results (needs `pandas` and `matplotlib`):
+**Play mode** runs N games between two AI players without a window by default, logs them to a CSV and plots the results (needs `pandas` and `matplotlib`):
 
 ```
 python tic_tac_toe.py --games 500 --x random --o minimax --start random
@@ -153,6 +153,8 @@ python tic_tac_toe.py --games 500 --x random --o minimax --start random
 | `--games N` | number of games; enables play mode |
 | `--x`, `--o` | strategies of X and O (`random` or `minimax`) |
 | `--start` | who moves first: `random` (default), `alternate`, `x`, `o` |
+| `--render` | show the games in a window (needs `pygame`); close it or press Esc to stop early (the plot is then skipped) |
+| `--delay MS` | pause per move (and at the end of each game) when rendering (default 1000) |
 | `--csv`, `--plot` | output files (default `tic_tac_toe_results.csv` / `.png`) |
 
 The CSV has one row per game: `game, x_strategy, o_strategy, first_mark, first_strategy, winner_mark, winner_strategy, moves` (`draw` when nobody wins; `moves` counts moves until the end state). The saved figure has three panels:

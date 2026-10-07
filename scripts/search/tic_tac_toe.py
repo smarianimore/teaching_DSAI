@@ -19,6 +19,8 @@ Play mode (headless AI vs AI; needs pandas and matplotlib)
     3. average number of moves per winning strategy.
   --start random|alternate|x|o  who moves first (default: random)
   --csv FILE / --plot FILE      output paths (default: tic_tac_toe_results.csv/.png)
+  --render shows each game in a window (pause of --delay ms per move and at
+  the end of each game; close the window or press Escape to stop early).
   Human players are not allowed in play mode.
 """
 
@@ -29,14 +31,14 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 
-@dataclass(frozen=True)  # every new board state is a new object
+@dataclass(frozen=True)  # technicality, ignore this (every new board state is a new object, created from scratch)
 class Board:
     """Immutable state; cells are indexed left-to-right, top-to-bottom."""
 
     cells: tuple = ("",) * 9
 
     def available_moves(self):
-        return [i for i, cell in enumerate(self.cells) if not cell]
+        return [i for i, cell in enumerate(self.cells) if not cell]  # "not cell" means the cell is empty, hence that move is available
 
     def winner(self):
         lines = (
@@ -57,7 +59,7 @@ class Board:
             raise ValueError("Mark must be X or O")
         if self.is_terminal() or index not in self.available_moves():
             raise ValueError("Illegal move")
-        return Board(self.cells[:index] + (mark,) + self.cells[index + 1:])
+        return Board(self.cells[:index] + (mark,) + self.cells[index + 1:])  # new board state, the only modified cell is the one at index, which now contains the mark
 
 
 class Game:
@@ -83,7 +85,7 @@ class Game:
 class HumanPlayer:
     """Converts a clicked cell into a move; None means wait for input."""
 
-    def choose_move(self, board, mark, clicked_cell=None):
+    def choose_move(self, board, mark, clicked_cell=None):  # 'mark' is needed by MinimaxPlayer, so it must stay here to have a common method between the three kind of players
         if not board.is_terminal() and clicked_cell in board.available_moves():
             return clicked_cell
         return None
@@ -92,7 +94,7 @@ class HumanPlayer:
 class RandomPlayer:
     """Chooses uniformly among legal moves."""
 
-    def choose_move(self, board, mark):
+    def choose_move(self, board, mark):  # 'mark' is needed by MinimaxPlayer, so it must stay here to have a common method between the three kind of players
         if board.is_terminal():
             return None
         return random.choice(board.available_moves())
@@ -103,16 +105,16 @@ class MinimaxPlayer:
 
     @staticmethod
     @lru_cache(maxsize=None)  # technicality, ignore this (cache scores for already visited states)
-    def _score(board, turn):
+    def _score(board, turn):  # this is search, we are not doing actions yet
         winner = board.winner()
         if winner:
             return 1 if winner == "X" else -1
-        if not board.available_moves():
+        if not board.available_moves():  # if there are no more available moves, it's a draw
             return 0
         next_turn = "O" if turn == "X" else "X"
         scores = (
             MinimaxPlayer._score(board.with_move(i, turn), next_turn)  # recursive evaluation: expand nodes to explore the tree until the leaves
-            for i in board.available_moves()
+            for i in board.available_moves()  # for every available move
         )
         return max(scores) if turn == "X" else min(scores)
 
@@ -127,7 +129,7 @@ class MinimaxPlayer:
         )
 
 
-class PygameView:
+class PygameView:  # ignore this, it's the GUI part we don't care about in this course
     """Draws the game and maps window coordinates to board indices."""
 
     CELL = 140
@@ -182,13 +184,35 @@ CSV_FIELDS = ["game", "x_strategy", "o_strategy", "first_mark", "first_strategy"
               "winner_mark", "winner_strategy", "moves"]
 
 
-def play_game(players, names, first):
-    """Play one headless game; return a CSV row (without the game id)."""
+class RenderQuit(Exception):
+    """The user closed the window or pressed Escape while rendering."""
+
+
+def show(view, game, names, delay):
+    """Draw the current state, pause, and honor quit requests."""
+    pg = view.pg
+    view.draw(game, names[game.turn])
+    end = pg.time.get_ticks() + delay
+    while True:
+        for event in pg.event.get():
+            if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
+                raise RenderQuit
+        if pg.time.get_ticks() >= end:
+            return
+        pg.time.wait(10)
+
+
+def play_game(players, names, first, view=None, delay=0):
+    """Play one game; return a CSV row (without the game id). Optionally render it."""
     game = Game(first)
+    if view:
+        show(view, game, names, delay)
     while not game.board.is_terminal():
         game.move(players[game.turn].choose_move(game.board, game.turn))
+        if view:
+            show(view, game, names, delay)
     mark = game.board.winner()
-    return {
+    return {  # this will be one row in the dataset
         "x_strategy": names["X"], "o_strategy": names["O"],
         "first_mark": first, "first_strategy": names[first],
         "winner_mark": mark or "draw",
@@ -197,7 +221,8 @@ def play_game(players, names, first):
     }
 
 
-def run_games(n, x_name, o_name, types, start, csv_path):
+def run_games(n, x_name, o_name, types, start, csv_path, view=None, delay=0):
+    """Run n games; return False if the user quit rendering early."""
     names = {"X": x_name, "O": o_name}
     players = {mark: types[name]() for mark, name in names.items()}
     with open(csv_path, "w", newline="") as f:
@@ -205,7 +230,12 @@ def run_games(n, x_name, o_name, types, start, csv_path):
         writer.writeheader()
         for g in range(n):
             first = {"x": "X", "o": "O", "alternate": "XO"[g % 2]}.get(start) or random.choice("XO")
-            writer.writerow({"game": g + 1, **play_game(players, names, first)})
+            try:
+                row = play_game(players, names, first, view, delay)
+            except RenderQuit:
+                return False
+            writer.writerow({"game": g + 1, **row})
+    return True
 
 
 def plot_results(csv_path, png_path):
@@ -214,30 +244,42 @@ def plot_results(csv_path, png_path):
 
     df = pd.read_csv(csv_path)
     # one row per (game, seat) so strategies are comparable even if both seats share one
+    # in practice, we are duplicating rows, one for X and one for O, but it's easier to analyze this way
     seats = pd.concat([
         df.assign(strategy=df["x_strategy"], seat="X"),
         df.assign(strategy=df["o_strategy"], seat="O"),
     ])
     seats["won"] = seats["winner_mark"] == seats["seat"]
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    # readable name for a mark, e.g. "X" -> "X (random)", using the strategy from the first row
     label = lambda m: f"{m} ({df[m.lower() + '_strategy'].iloc[0]})"
 
     wins = seats.groupby(["seat", "strategy"])["won"].sum()
+    # flatten the (seat, strategy) MultiIndex into bar labels like "minimax as O"
     wins.index = [f"{st} as {se}" for se, st in wins.index]
     wins["draw"] = (df["winner_mark"] == "draw").sum()
     wins.plot.bar(ax=axes[0], color="tab:blue", rot=20)
     axes[0].set_title("Wins per AI player strategy")
     axes[0].set_ylabel("wins")
 
+    # classify each game relative to who moved first, not to the mark
     df["outcome"] = df.apply(
         lambda r: "draw" if r["winner_mark"] == "draw"
         else "first player won" if r["winner_mark"] == r["first_mark"] else "second player won", axis=1)
+    # count games per (starting mark, outcome); outcomes become columns, missing ones are 0
     first = df.groupby(["first_mark", "outcome"]).size().unstack(fill_value=0)
+    # fixed column order, and keep all three outcomes even if one never occurred
     first = first.reindex(columns=["first player won", "second player won", "draw"], fill_value=0)
+    # label bar groups like "X (random) starts"
     first.index = [f"{label(m)} starts" for m in first.index]
     first.plot.bar(ax=axes[1], rot=20)
     axes[1].set_title("Outcomes per who starts first")
     axes[1].set_ylabel("games")
+
+    # final dataframe (original columns plus "outcome"), saved next to the raw CSV
+    final_csv = csv_path.rsplit(".", 1)[0] + "_final.csv"
+    df.to_csv(final_csv, index=False)
+    print(f"Saved {final_csv}")
 
     avg = df.groupby("winner_strategy")["moves"].mean()
     avg.plot.bar(ax=axes[2], color="tab:green", rot=20)
@@ -260,6 +302,8 @@ def main():
                         help="play mode: run N headless games (no human) and plot metrics")
     parser.add_argument("--start", choices=["random", "alternate", "x", "o"], default="random",
                         help="play mode: who moves first")
+    parser.add_argument("--render", action="store_true",
+                        help="play mode: show the games in a window")
     parser.add_argument("--csv", default="tic_tac_toe_results.csv")
     parser.add_argument("--plot", default="tic_tac_toe_results.png")
     args = parser.parse_args()
@@ -270,8 +314,21 @@ def main():
     if args.games:
         if "human" in (args.x, args.o):
             parser.error("play mode needs AI players (random, minimax)")
-        run_games(args.games, args.x, args.o, types, args.start, args.csv)
+        view = None
+        if args.render:
+            try:
+                view = PygameView()
+            except ImportError:
+                parser.exit(1, "Install pygame first: python -m pip install pygame\n")
+        try:
+            completed = run_games(args.games, args.x, args.o, types, args.start, args.csv,
+                                  view, args.delay)
+        finally:
+            if view:
+                view.pg.quit()
         print(f"Saved {args.csv}")
+        if not completed:
+            return
         plot_results(args.csv, args.plot)
         return
 
