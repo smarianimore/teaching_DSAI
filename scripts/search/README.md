@@ -15,6 +15,17 @@ python 04_delivery_greedy_astar.py
 
 On systems where the command is `python3`, use that instead. Each script is independent. There are no inputs to enter and no dependencies to install. 
 
+The Australia map-coloring CSP examples are in `scripts/search/`. From the repository root, run:
+
+```sh
+python scripts/search/generate_and_test.py
+python -m scripts.search.backtracking
+python scripts/search/mac.py
+python scripts/search/CSP_viz.py --algorithm mac
+```
+
+`CSP_viz.py` requires `matplotlib`; the three command-line solvers use only the Python standard library.
+
 | Slides | Script | Scenario and what to watch |
 |---|---|---|
 | 5–6 | `01_production_agent.py` | A production agent observes a part, makes a plan, then executes one action at a time. |
@@ -164,6 +175,28 @@ The CSV has one row per game: `game, x_strategy, o_strategy, first_mark, first_s
 3. **Average number of moves** per winning strategy (draws form their own bar).
 
 **Try:** compare `--x random --o random` (the first player has an edge) with `--x minimax --o minimax` (always a draw after 9 moves), or `--x random --o minimax --start x` versus `--start o`.
+
+## 6. Australia map-coloring CSP
+
+These scripts share the Australia map-coloring problem: each region is a variable, each has the domain `R`, `G`, `B`, and neighboring regions must have different colors.
+
+| Script | Purpose |
+|---|---|
+| `map_coloring.py` | Defines the CSP data structure and the Australia map-coloring problem. It is imported by the solvers rather than run directly. |
+| `generate_and_test.py` | Generates complete assignments and checks constraints only after each assignment is complete. |
+| `backtracking.py` | Checks constraints as variables are assigned and abandons conflicting partial assignments. |
+| `mac.py` | Runs backtracking with Maintaining Arc Consistency (MAC): AC-3 propagates domain reductions before search and after each tentative assignment. |
+| `CSP_viz.py` | Animates Generate & Test, Backtracking, or MAC on the map and constraint graph. |
+
+Run the visualizer from the repository root with `python scripts/search/CSP_viz.py` for Generate & Test, or choose an algorithm explicitly:
+
+```sh
+python scripts/search/CSP_viz.py --algorithm gt
+python scripts/search/CSP_viz.py --algorithm bt
+python scripts/search/CSP_viz.py --algorithm mac
+```
+
+Use `--speed N` to change the number of search steps processed per frame, or `--save FILE.gif` to save an animation instead of opening a window. Install `matplotlib` to use the visualizer. For a direct solver comparison, `python -m scripts.search.backtracking` and `python scripts/search/mac.py` print their first solution and search statistics; `python scripts/search/generate_and_test.py` reports complete assignments tested.
 
 ## Deliberate simplifications
 

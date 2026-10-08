@@ -1,18 +1,21 @@
 """
-Animated visualization of Generate & Test or Backtracking on the Australia
-map-coloring CSP.
+Animated visualization of Generate & Test, Backtracking, or MAC on the
+Australia map-coloring CSP.
 
 Reuses the CSP from generate_and_test.py, so what you see is exactly the
 algorithm running:
   - gt: each complete assignment is generated, then tested against every constraint.
   - bt: variables are assigned one at a time; a branch is abandoned (pruned) as
         soon as an assigned pair violates a constraint.
+  - mac: each assignment is followed by AC-3 propagation; branches that empty a
+         domain are rejected.
 
 Usage:
-    python generate_and_test_VIZ.py                         # Generate & Test, open a window
-    python generate_and_test_VIZ.py --algorithm bt          # Backtracking
-    python generate_and_test_VIZ.py --speed 20              # 20 steps per frame
-    python generate_and_test_VIZ.py --save gt.gif           # write a GIF instead of opening a window
+    python CSP_viz.py                         # Generate & Test, open a window
+    python CSP_viz.py --algorithm bt          # Backtracking
+    python CSP_viz.py --algorithm mac         # Maintaining Arc Consistency
+    python CSP_viz.py --speed 20              # 20 steps per frame
+    python CSP_viz.py --algorithm mac --save mac.gif
 
 Requires: matplotlib  (pip install matplotlib)
 """
@@ -27,6 +30,7 @@ from matplotlib.patches import Polygon
 
 from generate_and_test import generate, is_consistent
 import map_coloring
+from mac import ac3, build_arcs
 
 COLORS = {"R": "#e04a45", "G": "#3da34f", "B": "#3f6fd8"}
 EMPTY = "#e7eaee"
@@ -73,7 +77,55 @@ def bt_steps(csp, assignment=None):
         del assignment[var]
 
 
-ALGORITHMS = {"gt": ("Generate & Test", gt_steps), "bt": ("Backtracking", bt_steps)}
+def mac_steps(csp):
+    """Backtracking with AC-3 propagation after each tentative assignment."""
+    arcs, neighbors = build_arcs(csp)
+    domains = {v: list(csp.domains[v]) for v in csp.variables}
+    if not ac3(arcs, neighbors, domains):
+        return
+
+    def search(assignment, current_domains):
+        if len(assignment) == len(csp.variables):
+            return
+        var = next(v for v in csp.variables if v not in assignment)
+        for value in current_domains[var]:
+            trial = {v: list(d) for v, d in current_domains.items()}
+            trial[var] = [value]
+            consistent = ac3(
+                arcs, neighbors, trial,
+                [(neighbor, var) for neighbor in neighbors[var]],
+            )
+            next_assignment = {**assignment, var: value}
+            pruned = [
+                f"{v}={trial[v]}"
+                for v in csp.variables
+                if v != var and trial[v] != current_domains[v]
+            ]
+            if not consistent:
+                emptied = [v for v in csp.variables if not trial[v]]
+                detail = f"MAC rejects {var}={value}; AC-3 emptied {', '.join(emptied)}"
+                yield next_assignment, "reject", detail
+                continue
+
+            count = sum(
+                len(current_domains[v]) - len(trial[v])
+                for v in csp.variables if v != var
+            )
+            detail = f"MAC assigns {var}={value}; AC-3 pruned {count}"
+            if pruned:
+                detail += f" ({', '.join(pruned)})"
+            state = "solution" if len(next_assignment) == len(csp.variables) else "partial"
+            yield next_assignment, state, detail
+            yield from search(next_assignment, trial)
+
+    yield from search({}, domains)
+
+
+ALGORITHMS = {
+    "gt": ("Generate & Test", gt_steps),
+    "bt": ("Backtracking", bt_steps),
+    "mac": ("Maintaining Arc Consistency (MAC)", mac_steps),
+}
 
 
 def run_steps(csp, steps, steps_per_frame):
@@ -87,24 +139,25 @@ def run_steps(csp, steps, steps_per_frame):
             step = next(gen, None)
             if step is None:
                 break
-            assignment, state = step
+            assignment, state = step[:2]
+            detail = step[2] if len(step) > 2 else ""
             tested += 1
-            last = (assignment, state)
+            last = (assignment, state, detail)
             if state == "solution":
                 solutions.append(assignment)
                 break
         if last is None:
             return
-        yield last[0], last[1], tested, tuple(solutions)
+        yield last[0], last[1], tested, tuple(solutions), last[2]
         if last[1] == "solution":        # hold solutions on screen for a few frames
             for _ in range(8):
-                yield last[0], last[1], tested, tuple(solutions)
+                yield last[0], last[1], tested, tuple(solutions), last[2]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--algorithm", choices=ALGORITHMS, default="gt",
-                        help="gt = Generate & Test (default), bt = Backtracking")
+                        help="gt = Generate & Test (default), bt = Backtracking, mac = Maintaining Arc Consistency")
     parser.add_argument("--speed", type=int, default=5, help="search steps per frame (default 5)")
     parser.add_argument("--save", metavar="FILE", help="save animation to FILE (.gif) instead of showing it")
     args = parser.parse_args()
@@ -176,7 +229,7 @@ def main():
         elapsed = time.perf_counter() - started_at
         minutes, seconds = divmod(elapsed, 60)
 
-        assignment, state, tested, solutions = frame
+        assignment, state, tested, solutions, detail = frame
         violated = [(a, b) for a, b in edges
                     if a in assignment and b in assignment and assignment[a] == assignment[b]]
         hit = {v for e in violated for v in e}
@@ -191,7 +244,10 @@ def main():
             bad = e in violated
             line.set_color(BAD if bad else "#b9c0c9")
             line.set_linewidth(4 if bad else 2)
-        if state == "solution":
+        if detail:
+            status.set_text(f"Step {tested}: {detail}")
+            status.set_color("#1e7a3a" if state == "solution" else BAD if state == "reject" else "#555")
+        elif state == "solution":
             status.set_text(f"Step {tested}: consistent. SOLUTION FOUND")
             status.set_color("#1e7a3a")
         elif state == "partial":
