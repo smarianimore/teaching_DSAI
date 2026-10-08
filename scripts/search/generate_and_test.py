@@ -7,31 +7,7 @@ assignments are found. Each complete assignment is tested for consistency."
 Applied to the Australia map-coloring CSP (slides 9-11).
 """
 import time
-from collections import namedtuple  # like a tuple, but each element can be referred to by name (like in a dictionary)
-
-# A CSP is a triple <V, D, C> (slide 4).
-CSP = namedtuple("CSP", ["variables", "domains", "constraints"])
-
-# A constraint is a scope (the variables it involves) plus a predicate that
-# says whether a full set of values for that scope is allowed.
-Constraint = namedtuple("Constraint", ["scope", "predicate"])
-
-
-def different(x, y):
-    """Binary constraint: x != y."""
-    return Constraint((x, y), lambda a, b: a != b)
-
-
-def map_coloring_csp():
-    variables = ["WA", "NT", "Q", "NSW", "V", "SA", "T"]
-    domains = {v: ["R", "G", "B"] for v in variables}  # one domain, shared
-    neighbors = [
-        ("WA", "NT"), ("WA", "SA"),
-        ("NT", "SA"), ("NT", "Q"),
-        ("SA", "Q"), ("SA", "NSW"), ("SA", "V"),
-        ("Q", "NSW"), ("NSW", "V"),
-    ]  # Tasmania (T) has no neighbors
-    return CSP(variables, domains, [different(x, y) for x, y in neighbors])
+import map_coloring
 
 
 # --------------------------------------------------------------------------
@@ -71,7 +47,7 @@ def generate_and_test(csp, find_all=True):
 
 
 if __name__ == "__main__":
-    csp = map_coloring_csp()
+    csp = map_coloring.map_coloring_csp()
     total = 1
     for v in csp.variables:
         total *= len(csp.domains[v])

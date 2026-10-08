@@ -1,14 +1,18 @@
 """
-Animated visualization of Generate & Test on the Australia map-coloring CSP.
+Animated visualization of Generate & Test or Backtracking on the Australia
+map-coloring CSP.
 
-Reuses the CSP and the generator from generate_and_test.py, so what you see is
-exactly the algorithm running: each complete assignment is generated, then
-tested against every constraint.
+Reuses the CSP from generate_and_test.py, so what you see is exactly the
+algorithm running:
+  - gt: each complete assignment is generated, then tested against every constraint.
+  - bt: variables are assigned one at a time; a branch is abandoned (pruned) as
+        soon as an assigned pair violates a constraint.
 
 Usage:
-    python visualize_generate_and_test.py                 # open a window
-    python visualize_generate_and_test.py --speed 20      # test 20 assignments per frame
-    python visualize_generate_and_test.py --save gt.gif   # write a GIF instead of opening a window
+    python generate_and_test_VIZ.py                         # Generate & Test, open a window
+    python generate_and_test_VIZ.py --algorithm bt          # Backtracking
+    python generate_and_test_VIZ.py --speed 20              # 20 steps per frame
+    python generate_and_test_VIZ.py --save gt.gif           # write a GIF instead of opening a window
 
 Requires: matplotlib  (pip install matplotlib)
 """
@@ -21,7 +25,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Polygon
 
-from generate_and_test import map_coloring_csp, generate, is_consistent
+from generate_and_test import generate, is_consistent
+import map_coloring
 
 COLORS = {"R": "#e04a45", "G": "#3da34f", "B": "#3f6fd8"}
 EMPTY = "#e7eaee"
@@ -45,42 +50,70 @@ def flip(points):
     return [(x, -y) for x, y in points]
 
 
-def run_steps(csp, steps_per_frame):
-    """Drive the G&T loop and yield one snapshot per animation frame.
+def gt_steps(csp):
+    """Generate & Test: one step per complete assignment."""
+    for assignment in generate(csp):
+        yield assignment, "solution" if is_consistent(csp, assignment) else "reject"
+
+
+def bt_steps(csp, assignment=None):
+    """Backtracking: one step per variable assignment; conflicting branches are pruned."""
+    assignment = {} if assignment is None else assignment
+    var = csp.variables[len(assignment)]
+    for value in csp.domains[var]:
+        assignment[var] = value
+        scoped = [c for c in csp.constraints if all(v in assignment for v in c.scope)]
+        if not all(c.predicate(*(assignment[v] for v in c.scope)) for c in scoped):
+            yield dict(assignment), "reject"            # prune: do not extend
+        elif len(assignment) == len(csp.variables):
+            yield dict(assignment), "solution"
+        else:
+            yield dict(assignment), "partial"
+            yield from bt_steps(csp, assignment)
+        del assignment[var]
+
+
+ALGORITHMS = {"gt": ("Generate & Test", gt_steps), "bt": ("Backtracking", bt_steps)}
+
+
+def run_steps(csp, steps, steps_per_frame):
+    """Drive the search loop and yield one snapshot per animation frame.
     A frame ends early when a solution is found, so no solution is skipped."""
-    gen = generate(csp)
+    gen = steps(csp)
     tested, solutions = 0, []
     while True:
         last = None
         for _ in range(steps_per_frame):
-            assignment = next(gen, None)
-            if assignment is None:
+            step = next(gen, None)
+            if step is None:
                 break
+            assignment, state = step
             tested += 1
-            ok = is_consistent(csp, assignment)
-            if ok:
+            last = (assignment, state)
+            if state == "solution":
                 solutions.append(assignment)
-            last = (assignment, ok)
-            if ok:
                 break
         if last is None:
             return
         yield last[0], last[1], tested, tuple(solutions)
-        if last[1]:                      # hold solutions on screen for a few frames
+        if last[1] == "solution":        # hold solutions on screen for a few frames
             for _ in range(8):
                 yield last[0], last[1], tested, tuple(solutions)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--speed", type=int, default=5, help="assignments tested per frame (default 5)")
+    parser.add_argument("--algorithm", choices=ALGORITHMS, default="gt",
+                        help="gt = Generate & Test (default), bt = Backtracking")
+    parser.add_argument("--speed", type=int, default=5, help="search steps per frame (default 5)")
     parser.add_argument("--save", metavar="FILE", help="save animation to FILE (.gif) instead of showing it")
     args = parser.parse_args()
 
     if args.save:
         matplotlib.use("Agg")
 
-    csp = map_coloring_csp()
+    name, steps = ALGORITHMS[args.algorithm]
+    csp = map_coloring.map_coloring_csp()
     total = 1
     for v in csp.variables:
         total *= len(csp.domains[v])
@@ -90,7 +123,7 @@ def main():
     fig, (ax_map, ax_graph, ax_solutions) = plt.subplots(
         1, 3, figsize=(14, 6.2), gridspec_kw={"width_ratios": [1.1, 1, 1]}
     )
-    fig.suptitle("Generate & Test: Australia map coloring", fontsize=14, fontweight="bold")
+    fig.suptitle(f"{name}: Australia map coloring", fontsize=14, fontweight="bold")
 
     # --- map ---
     patches = {}
@@ -122,7 +155,7 @@ def main():
     ax_graph.set_ylim(-250, 0)
     ax_graph.set_aspect("equal")
     ax_graph.axis("off")
-    ax_graph.set_title("Constraint graph (red = violated)", fontsize=10)
+    ax_graph.set_title("Constraint graph (red = violated, grey = unassigned)", fontsize=10)
 
     ax_solutions.axis("off")
     ax_solutions.set_title("Solutions found: 0 / {}".format(total_solutions), fontsize=10)
@@ -143,11 +176,12 @@ def main():
         elapsed = time.perf_counter() - started_at
         minutes, seconds = divmod(elapsed, 60)
 
-        assignment, ok, tested, solutions = frame
-        violated = [(a, b) for a, b in edges if assignment[a] == assignment[b]]
+        assignment, state, tested, solutions = frame
+        violated = [(a, b) for a, b in edges
+                    if a in assignment and b in assignment and assignment[a] == assignment[b]]
         hit = {v for e in violated for v in e}
         for v in csp.variables:
-            col = COLORS[assignment[v]]
+            col = COLORS[assignment[v]] if v in assignment else EMPTY
             patches[v].set_facecolor(col)
             patches[v].set_edgecolor(BAD if v in hit else "white")
             patches[v].set_linewidth(4 if v in hit else 2)
@@ -157,11 +191,14 @@ def main():
             bad = e in violated
             line.set_color(BAD if bad else "#b9c0c9")
             line.set_linewidth(4 if bad else 2)
-        if ok:
-            status.set_text(f"Assignment {tested}: consistent. SOLUTION FOUND")
+        if state == "solution":
+            status.set_text(f"Step {tested}: consistent. SOLUTION FOUND")
             status.set_color("#1e7a3a")
+        elif state == "partial":
+            status.set_text(f"Step {tested}: {len(assignment)} variable(s) assigned, no conflict yet")
+            status.set_color("#555")
         else:
-            status.set_text(f"Assignment {tested}: rejected ({len(violated)} constraint(s) violated)")
+            status.set_text(f"Step {tested}: rejected ({len(violated)} constraint(s) violated)")
             status.set_color(BAD)
         ax_solutions.set_title(
             f"Solutions found: {len(solutions)} / {total_solutions}", fontsize=10
@@ -172,13 +209,13 @@ def main():
         ]
         solution_list.set_text(solution_header + ("\n" + "\n".join(rows) if rows else ""))
         counters.set_text(
-            f"tested {tested:,} / {total:,}    "
+            f"steps {tested:,}  (full search space: {total:,})    "
             f"solutions found: {len(solutions)} / {total_solutions}    "
             f"elapsed: {int(minutes):02}:{seconds:04.1f}"
         )
         return []
 
-    anim = FuncAnimation(fig, update, frames=list(run_steps(csp, args.speed)),
+    anim = FuncAnimation(fig, update, frames=list(run_steps(csp, steps, args.speed)),
                          interval=60, repeat=False, blit=False)
 
     if args.save:
