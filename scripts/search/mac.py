@@ -65,7 +65,7 @@ def ac3(arcs, neighbors, domains, queue=None, stats=None):
     """Reduce `domains` in place until every arc is consistent.
     `queue` defaults to all arcs. Returns False as soon as a domain becomes
     empty (the CSP has no solution under these domains), True otherwise."""
-    queue = deque(arcs if queue is None else queue)
+    queue = deque(arcs if queue is None else queue)  # technicality: deque is faster than list for popping from the left, read it like alist, no problem
     while queue:
         xi, xj = queue.popleft()
         if rm_inconsistent_values(arcs, domains, xi, xj, stats):
